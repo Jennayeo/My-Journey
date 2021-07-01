@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { Text, Grid } from "./index";
 
 const Input = (props) => {
-  const { label, placeholder, _onChange, type, multiLine } = props;
+  const { label, placeholder, _onChange, type, multiLine, value } = props;
   
   if(multiLine){
     return (
@@ -12,6 +12,7 @@ const Input = (props) => {
         {label && <Text margin="0px">{label}</Text>}
         <ElTextarea
           rows={10}
+          value={value}
           placeholder={placeholder}
           onChange={_onChange}
         ></ElTextarea>
@@ -34,6 +35,7 @@ Input.defaultProps = {
   label: false,
   placeholder: "텍스트를 입력해주세요.",
   type: "text",
+  value: "",
   _onChange: () => {},
 };
 

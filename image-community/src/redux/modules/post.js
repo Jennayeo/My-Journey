@@ -1,13 +1,17 @@
 import {createAction, handleActions} from "redux-actions";
 import {produce} from "immer"; // 리듀서 불변성 유지
-import { firestore } from "../../shared/firebase";
+import { firestore, storage } from "../../shared/firebase";
 import moment from "moment";
+import {actionCreators as imageActions} from "./image";
 
 const SET_POST = "SET_POST"; // 가져온 목록을 리덕스에 넣어줌
 const ADD_POST = "ADD_POST"; // 리덕스에 데이터 하나 더 추가
+const EDIT_POST = "EDIT_POST";
 
 const setPost = createAction(SET_POST, (post_list) => ({post_list}));
 const addPost = createAction(ADD_POST, (post) => ({post}));
+const editPost = createAction(EDIT_POST, (post_id, post) => ({post_id, post}));
+// 수정하려면 일단 post_id필요하고, 수정할 내용물들도 필요하다(post)
 
 const initialState = {
     list: [],
@@ -26,6 +30,58 @@ const initialPost = {
     // insert_dt: "2021-02-27 10:00:00",
 };
 
+const editPostFB = (post_id = null, post = {}) => {
+    return function (dispatch, getState, {history}){
+        if(!post_id){
+            return;
+        }
+        const _image = getState().image.preview;
+        const _post_idx = getState().post.list.findIndex(p => p.id === post_id);
+        const _post = getState().post.list[_post_idx]; // 게시글 하나의 정보
+
+        const postDB = firestore.collection("post");
+
+        // 새로 이미지를 업로드를 해주지않았다면
+        if(_image === _post.image_url){ // 프리뷰와 비교, 같다면 새업로드X
+            postDB.doc(post_id).update(post).then(doc => {
+                dispatch(editPost(post_id, {...post}))
+                history.replace("/");
+            });
+
+            return;
+        }else {
+            const user_id = getState().user.user.uid;
+            const _upload = storage
+              .ref(`images/${user_id}_${new Date().getTime()}`)
+              .putString(_image, "data_url");
+      
+            _upload.then((snapshot) => {
+              snapshot.ref
+                .getDownloadURL()
+                .then((url) => {
+                  console.log(url);
+      
+                  return url;
+                })
+                .then((url) => {
+                  postDB
+                    .doc(post_id)
+                    .update({ ...post, image_url: url })
+                    .then((doc) => {
+                      dispatch(editPost(post_id, { ...post, image_url: url }));
+                      history.replace("/");
+                    });
+                })
+                .catch((err) => {
+                  window.alert("앗! 이미지 업로드에 문제가 있어요!");
+                  console.log("앗! 이미지 업로드에 문제가 있어요!", err);
+                });
+            });
+          }
+        };
+      };
+
+
 // FB에 글 추가하는 함수
 const addPostFB = (contents) => {
     return function (dispatch, getState, {history}) {
@@ -33,7 +89,7 @@ const addPostFB = (contents) => {
         const postDB = firestore.collection("post");
 
         // 추가해야할 정보
-        const _user = getState().user.user;
+        const _user = getState().user.user; // getState는 스토어 데이터에 접근 가능하도록
         console.log(_user);
         const user_info = {
             user_name: _user.user_name,
@@ -46,13 +102,35 @@ const addPostFB = (contents) => {
             // addPostFB가 실행 된 후 insert.dt가 만들어질테니 여기서 한번 더 해줘야함
             insert_dt: moment().format("YYYY-MM-DD hh:mm:ss"),
         };
-        postDB.add({...user_info, ..._post}).then((doc) => {
-            let post = {user_info, ..._post, id: doc.id}; // 리덕스와 파베 데이터 모양새 맞춰주기
-            dispatch(addPost(post));
-			history.replace("/");
-        }).catch((err) => {
-            console.log("게시글 작성 실패. 다시 시도해주세요!")
-        });
+        // 이미지 업로드를위해 preview를 가져온다.
+        const _image = getState().image.preview; // image는 스토어의 상태값
+        console.log(_image);
+        console.log(typeof _image);
+        const _upload = storage.ref(`images/${user_info.user_id}_${new Date().getTime()}`).putString(_image, "data_url");
+        _upload.then(snapshot => {
+            snapshot.ref.getDownloadURL().then(url => {
+                console.log(url);
+
+                return url; // url을 리턴하고있으니 .then이후 사용가능
+            }).then(url => {
+                postDB.add({...user_info, ..._post, image_url: url}).then((doc) => {
+                    let post = {user_info, ..._post, id: doc.id, image_url: url}; // 리덕스와 파베 데이터 모양새 맞춰주기
+                    dispatch(addPost(post));
+                    history.replace("/");
+
+                    // 업로드 완료 후 preview이미지 비워주기
+                    dispatch(imageActions.setPreview(null));
+
+                }).catch((err) => {
+                    window.alert('게시글 업로드에 실패하였어요. 다시 시도해주세요!');
+                    console.log("게시글 작성 실패. 다시 시도해주세요!")
+                });
+            }).catch((err) => {
+                window.alert('이미지 업로드에 실패하였어요. 다시 시도해주세요!');
+                console.log('이미지 업로드 실패');
+            })
+                    
+                })
     }
 }
 const getPostFB = () => {
@@ -91,6 +169,11 @@ export default handleActions(
         }),
         [ADD_POST]: (state, action) => produce(state, (draft) => {
             draft.list.unshift(action.payload.post);
+        }),
+        [EDIT_POST]: (state, action) => produce(state, (draft) => {
+            //id로 뭘 고칠건지 찾아야함
+            let idx = draft.list.findIndex((p) => p.id === action.payload.post_id);
+            draft.list[idx] = {...draft.list[idx], ...action.payload.post};
         })
     }, initialState
 );
@@ -98,8 +181,10 @@ export default handleActions(
 const actionCreators = {
     setPost,
     addPost,
+    editPost,
     getPostFB,
-    addPostFB
+    addPostFB,
+    editPostFB,
 }
 
 export {actionCreators};

@@ -7,14 +7,19 @@ import {actionCreators as imageActions} from "./image";
 const SET_POST = "SET_POST"; // 가져온 목록을 리덕스에 넣어줌
 const ADD_POST = "ADD_POST"; // 리덕스에 데이터 하나 더 추가
 const EDIT_POST = "EDIT_POST";
+const LOADING = "LOADING"; // 무한스크롤, 페이징 가지고오고는지
 
-const setPost = createAction(SET_POST, (post_list) => ({post_list}));
+const setPost = createAction(SET_POST, (post_list, paging) => ({post_list, paging}));
 const addPost = createAction(ADD_POST, (post) => ({post}));
 const editPost = createAction(EDIT_POST, (post_id, post) => ({post_id, post}));
 // 수정하려면 일단 post_id필요하고, 수정할 내용물들도 필요하다(post)
+const loading = createAction(LOADING, (is_loading) => ({ is_loading }));
 
 const initialState = {
     list: [],
+    // 무한스크롤을 위한 페이징, is_loading
+    paging: {start: null, next: null, size: 3}, // 시작점, 다음 목록, 몇개씩 가져올지
+    is_loading: false, // 지금 가지고오고있는 중이니?
 }
 
 const initialPost = {
@@ -133,10 +138,55 @@ const addPostFB = (contents) => {
                 })
     }
 }
-const getPostFB = () => {
+const getPostFB = (start = null, size = 3) => {
     return function (dispatch, getState, {history}) {
-        const postDB = firestore.collection("post");
 
+        // 더이상 추가로드할게 없으면
+        let _paging = getState().post.paging;
+        if(_paging.start && !_paging.next){
+            return;
+        }
+
+        dispatch(loading(true)); // is_loading을 true바꿔줌
+        const postDB = firestore.collection("post");
+    
+        // 무한스크롤위한 쿼리 가져오기
+        let query = postDB.orderBy("insert_dt", "desc"); // 역순정렬
+        if(start){ // 스타트 정보가있다면
+            query = query.startAt(start);
+        }
+        query
+            .limit(size + 1)
+            .get()
+            .then(docs => {
+            let post_list = [];
+            let paging = {
+                start: docs.docs[0],
+                next: docs.docs.length === size +1? docs.docs[docs.docs.length - 1] : null,
+                size: size,
+            }
+            docs.forEach((doc) => {
+
+                // 데이터 형식 맞춰줌 (파베와 리덕스)
+                let _post = doc.data(); // 파이어스토어에서 가져온 값들을 _post에 넣어줌
+                let post = Object.keys(_post).reduce((acc, cur) => { // 딕셔너리의 키값들을 배열로 만들어준다
+                // Object.keys(_post) _post의 키 값들을 배열로 만들어줌 -> ['comment_cnt', 'contents', ..]
+                // 배열이되었으니 내장함수 사용가능
+                // reduce함수는 누산: 첫번째인자(acc) = 누산된 값, 두번째 인자(cur) = 현재값, map처럼 하나하나 돌면서 들어감
+                    if(cur.indexOf("user_") !== -1){ // 키값에 user_가 포함되면(=-1이 아니라면)
+                        return {...acc, user_info: {...acc.user_info, [cur]: _post[cur]}};
+                    } // cur에 키값 하나하나씩 들어감, ...acc: 마지막으로 연산된까지의 딕셔너리가 그대로 들어감
+                    // user_info는 따로 묶어줌
+                    return {...acc, [cur]: _post[cur]}
+                }, {id: doc.id, user_info: {}}); // doc.data에 id안들어가있으니 기본값으로 넣어줌, user_info 기본값으로 미리 넣어줌
+                post_list.push(post);
+            }
+        )
+        post_list.pop();
+
+        dispatch(setPost(post_list, paging));
+        });
+        return;
         postDB.get().then((docs) => {
             let post_list = [];
             docs.forEach((doc) => {
@@ -165,7 +215,9 @@ const getPostFB = () => {
 export default handleActions(
     {
         [SET_POST]: (state, action) => produce(state, (draft) => {
-            draft.list = action.payload.post_list;
+            draft.list.push(...action.payload.post_list);
+            draft.paging = action.payload.paging;
+            draft.is_loading = false; // 다 불러왔음 로딩이 끝난거니 false로 바꿔준다
         }),
         [ADD_POST]: (state, action) => produce(state, (draft) => {
             draft.list.unshift(action.payload.post);
@@ -174,6 +226,9 @@ export default handleActions(
             //id로 뭘 고칠건지 찾아야함
             let idx = draft.list.findIndex((p) => p.id === action.payload.post_id);
             draft.list[idx] = {...draft.list[idx], ...action.payload.post};
+        }),
+        [LOADING]: (state, action) => produce(state, (draft) => {
+            draft.is_loading =action.payload.is_loading;
         })
     }, initialState
 );

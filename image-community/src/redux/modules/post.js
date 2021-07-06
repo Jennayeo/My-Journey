@@ -186,13 +186,18 @@ const getPostFB = (start = null, size = 3) => {
 
         dispatch(setPost(post_list, paging));
         });
-        return;
-        postDB.get().then((docs) => {
-            let post_list = [];
-            docs.forEach((doc) => {
+    }
+}
 
-                // 데이터 형식 맞춰줌
-                let _post = doc.data(); // 파이어스토어에서 가져온 값들을 _post에 넣어줌
+const getOnePostFB = (id) => {
+    return function(dispatch, getState, {history}){
+        // 파이어스토어 데이터 가져오기
+        const postDB = firestore.collection("post");
+        postDB.doc(id).get().then(doc => {
+            console.log(doc);
+            console.log(doc.data());
+
+            let _post = doc.data(); // 파이어스토어에서 가져온 값들을 _post에 넣어줌
                 let post = Object.keys(_post).reduce((acc, cur) => { // 딕셔너리의 키값들을 배열로 만들어준다
                 // Object.keys(_post) _post의 키 값들을 배열로 만들어줌 -> ['comment_cnt', 'contents', ..]
                 // 배열이되었으니 내장함수 사용가능
@@ -202,21 +207,30 @@ const getPostFB = (start = null, size = 3) => {
                     } // cur에 키값 하나하나씩 들어감, ...acc: 마지막으로 연산된까지의 딕셔너리가 그대로 들어감
                     // user_info는 따로 묶어줌
                     return {...acc, [cur]: _post[cur]}
-                }, {id: doc.id, user_info: {}}); // doc.data에 id안들어가있으니 기본값으로 넣어줌, user_info 기본값으로 미리 넣어줌
-                post_list.push(post);
-            }
-        )
-        console.log(post_list);
-
-        dispatch(setPost(post_list))
-        })
+                }, {id: doc.id, user_info: {}});
+            dispatch(setPost([post]))
+        });
     }
 }
+
 export default handleActions(
     {
         [SET_POST]: (state, action) => produce(state, (draft) => {
             draft.list.push(...action.payload.post_list);
-            draft.paging = action.payload.paging;
+
+            // 중복값 제거
+            draft.list = draft.list.reduce((acc, cur)=>{ //acc: 누산된 값, cur: 현재 값
+                if(acc.findIndex(a => a.id === cur.id) === -1){
+                    return [...acc, cur];
+                }else{
+                    acc[acc.findIndex((a) => a.id === cur.id)] = cur;
+                    return acc;
+                }
+            }, [] )
+
+            if(action.payload.paging){
+                draft.paging = action.payload.paging;
+            }
             draft.is_loading = false; // 다 불러왔음 로딩이 끝난거니 false로 바꿔준다
         }),
         [ADD_POST]: (state, action) => produce(state, (draft) => {
@@ -240,6 +254,7 @@ const actionCreators = {
     getPostFB,
     addPostFB,
     editPostFB,
+    getOnePostFB
 }
 
 export {actionCreators};

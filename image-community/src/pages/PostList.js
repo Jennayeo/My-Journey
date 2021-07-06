@@ -22,7 +22,7 @@ const PostList = (props) => {
 
     React.useEffect(() => {
         // 추가한 게시글 제일 위로 올려주기
-        if(post_list.length === 0){
+        if(post_list.length < 2){
             dispatch(postActions.getPostFB());
         }
     }, []);

@@ -54,6 +54,10 @@ const Login = (props) => {
             _onChange={(e) => {
               setPwd(e.target.value);
             }}
+            // 엔터쳐서 로그인하기
+            value={pwd}
+            is_submit
+            onSubmit={login}
           />
         </Grid>
 

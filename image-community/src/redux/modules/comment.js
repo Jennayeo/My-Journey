@@ -14,6 +14,8 @@ const LOADING = "LOADING";
 
 const setComment = createAction(SET_COMMENT, (post_id, comment_list) => ({post_id, comment_list}));
 const addComment = createAction(ADD_COMMENT, (post_id, comment) => ({post_id, comment}));
+// const setLike = createAction(SET_LIKE, (post_id) => ({post_id}));
+// const addLike = createAction(ADD_LIKE, (post_id) => ({post_id}));
 
 const loading = createAction(LOADING, (is_loading) => ({ is_loading }));
 

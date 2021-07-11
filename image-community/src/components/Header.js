@@ -9,6 +9,11 @@ import { history } from "../redux/configureStore";
 import { apiKey } from "../shared/firebase";
 
 import NotiBadge from "./NotiBadge";
+import user from "../shared/Icon/user.png";
+import logout from "../shared/Icon/logout.png";
+import styled from "styled-components";
+import login from "../shared/Icon/enter.png";
+import join from "../shared/Icon/join.png";
 
 const Header = (props) => {
   const dispatch = useDispatch();
@@ -23,15 +28,15 @@ const Header = (props) => {
   if (is_login && is_session) {
     return (
       <React.Fragment>
-        <Grid is_flex padding="4px 16px">
+        <Grid is_flex padding="20px 60px">
           <Grid>
-            <Text margin="0px" size="24px" bold>
-              헬로
+            <Text font="KaushanScript" color="#FEC503" margin="0px" size="24px" bold>
+            My Journey
             </Text>
           </Grid>
 
-          <Grid is_flex>
-            <Button text="내정보"></Button>
+          <Grid width="80%" is_flex>
+            <Image src={user}></Image>
             {/* <Button text="알림" _onClick={() => {
               history.push('/noti');
             }}></Button> */}
@@ -39,12 +44,12 @@ const Header = (props) => {
             <NotiBadge _onClick={() => {
               history.push('/noti');
             }}/> 
-            <Button
-              text="로그아웃"
-              _onClick={() => {
+            <Image
+            src={logout}
+              onClick={() => {
                 dispatch(userActions.logoutFB());
               }}
-            ></Button>
+            ></Image>
           </Grid>
         </Grid>
       </React.Fragment>
@@ -53,22 +58,24 @@ const Header = (props) => {
 
   return (
     <React.Fragment>
-      <Grid is_flex padding="4px 16px">
+        <Grid is_flex padding="20px 60px">
         <Grid>
-          <Text margin="0px" size="24px" bold>
-            헬로
-          </Text>
+        <Text margin="0px" size="24px" bold>
+            My Journey
+            </Text>
         </Grid>
 
-        <Grid is_flex>
-          <Button
-            text="로그인"
+        <Grid width="20%" is_flex>
+        <Button
+            width="80px"
+            text="Login"
             _onClick={() => {
               history.push("/login");
             }}
           ></Button>
           <Button
-            text="회원가입"
+            width="80px"
+            text="Join"
             _onClick={() => {
               history.push("/signup");
             }}
@@ -80,5 +87,10 @@ const Header = (props) => {
 };
 
 Header.defaultProps = {};
+
+const Image = styled.img`
+  width: 25px;
+`;
+
 
 export default Header;

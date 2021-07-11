@@ -2,9 +2,9 @@ import React from "react";
 import styled from "styled-components";
 
 const Text = (props) => {
-  const { bold, color, size, children, margin } = props;
+  const { font, bold, color, size, children, margin } = props;
 
-  const styles = {bold: bold, color: color, size: size, margin};
+  const styles = {font:font, bold: bold, color: color, size: size, margin};
   return (
       <P {...styles}>
           {children}
@@ -21,6 +21,7 @@ Text.defaultProps = {
 };
 
 const P = styled.p`
+  font-family: ${(props) => props.font};
   color: ${(props) => props.color};
   font-size: ${(props) => props.size};
   font-weight: ${(props) => (props.bold? "600" : "400")};

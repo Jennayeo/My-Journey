@@ -12,6 +12,7 @@ import PostWrite from "../pages/PostWrite";
 import PostDetail from "../pages/PostDetail";
 import Search from "./Search";
 import Notification from "../pages/Notification";
+import MyPage from "../pages/MyPage";
 
 import Header from "../components/Header";
 import { Grid, Button } from "../elements";
@@ -47,6 +48,7 @@ function App() {
           <Route path="/post/:id" exact component={PostDetail}/>
           <Route path="/search" exact component={Search}/>
           <Route path="/noti" exact component={Notification}/>
+          <Route path="/mypage" exact component={MyPage}/>
         </ConnectedRouter>
       </Grid>
       <Permit>

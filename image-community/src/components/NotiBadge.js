@@ -1,7 +1,7 @@
 import React from "react";
 import { Badge } from "@material-ui/core";
-import NotificationsIcon from "@material-ui/icons/Notifications";
-
+// import NotificationsIcon from "@material-ui/icons/Notifications";
+import noti from "../shared/Icon/notification.png";
 import {realtime} from "../shared/firebase";
 import {useSelector} from "react-redux";
 
@@ -12,6 +12,7 @@ const NotiBadge = (props) => {
     // noti뱃지를 누르면 알림 '1'표시가 꺼지도록하는 함수
     const notiCheck = () => {
         props._onClick();
+        
     }
 
     React.useEffect(() => {
@@ -31,7 +32,7 @@ const NotiBadge = (props) => {
     return (
         <React.Fragment>
             <Badge color="secondary" variant="dot" invisible={is_read} onClick={notiCheck}>
-                <NotificationsIcon/>
+                <img src={noti} width={30}/>
             </Badge>
 
         </React.Fragment>
